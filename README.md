@@ -1,4 +1,4 @@
-# app-lifecycle-analyzer
+# App Lifecycle Analyzer
 
 **Read-only lifecycle audit for Microsoft Entra ID app registrations — in one HTML report.**
 
