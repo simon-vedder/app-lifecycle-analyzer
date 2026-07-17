@@ -14,6 +14,12 @@ activity, and copy-only remediation commands for cleaning up what's expired or u
 changed in your tenant — the report *shows* you the fix command and lets you copy it; you run it in a
 write-scoped session yourself.
 
+![The App Lifecycle Analyzer report — per-app credential expiry, activity status and cleanup commands](docs/screenshot.png)
+
+> ▶ **See a sample:** open [`docs/sample-report.html`](docs/sample-report.html)
+> in a browser — a fully populated demo report built from synthetic app
+> registrations (no tenant was accessed).
+
 ## What it surfaces
 
 - **Credential expiry** — secrets and certificates that are expired or expiring soon, per app.
