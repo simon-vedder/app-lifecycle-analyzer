@@ -1,5 +1,11 @@
 # App Lifecycle Analyzer
 
+![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?logo=powershell&logoColor=white)
+![Microsoft Entra ID](https://img.shields.io/badge/Microsoft-Entra_ID-0078D4?logo=microsoftazure&logoColor=white)
+![Access: read-only](https://img.shields.io/badge/access-read--only-16a34a)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Last commit](https://img.shields.io/github/last-commit/simon-vedder/app-lifecycle-analyzer)
+
 **Read-only lifecycle audit for Microsoft Entra ID app registrations — in one HTML report.**
 
 Scans every app registration in your tenant and produces a single self-contained, interactive HTML
