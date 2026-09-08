@@ -1,64 +1,81 @@
+#Requires -Version 7.0
+
 <#
 .SYNOPSIS
-    AppLifecycleAnalyzer — audits all Entra ID App Registrations and produces an
-    interactive HTML report focused on inactivity, credential expiry, and cleanup.
+    Every Entra ID app registration with its credentials, expiry and last sign-in, in one HTML report.
 
 .DESCRIPTION
-    Connects to Microsoft Graph and enumerates every App Registration in the tenant
-    along with its secrets, certificates, federated credentials, last sign-in
-    activity (combined from two Graph sources for accuracy), and the application's
-    isDisabled state from /beta.
+    A tenant collects app registrations the way a garage collects boxes. This reads all of them in
+    one pass and writes a single self-contained HTML page you can hand to whoever owns the tenant.
 
-    Generates a single self-contained HTML report (RiskyRolesAnalyzer style) with:
-      - Filters: Activity status, Expiry status, Credential type, free-text search
-      - Sortable columns
-      - Cleanup commands per finding:
-            * Delete individual expired secrets / certs (keyId-targeted)
-            * Bulk-delete all expired credentials of an app
-            * Delete the entire app registration
-      - Detail modal listing every credential with its own per-row cleanup command
-      - CSV export of the currently filtered rows
+    Per app: its client secrets, certificates and federated credentials with the exact date each
+    one expires, when the app last signed in (combined from two Graph sources, because neither is
+    complete on its own), and whether the app has been deactivated or has no service principal at
+    all. Apps with no credentials and apps nobody has used in months are named rather than left for
+    you to spot in a list.
+
+    The report filters by activity, expiry and credential type, sorts on any column, and exports
+    what you filtered to CSV. Every row carries the command that cleans it up - one expired secret
+    by its keyId, every expired credential of an app, or the whole registration - and a detail view
+    shows each credential with its own command.
+
+    Read-only. It signs in with read scopes, reads, and writes a file. The cleanup commands are
+    text for you to copy; the script never runs one.
 
 .PARAMETER OutputPath
-    Path of the HTML report. Default: .\AppLifecycleAnalysis_<timestamp>.html
+    Where to write the report. Default: ./AppLifecycleAnalysis_<timestamp>.html next to you.
 
 .PARAMETER TenantId
-    Optional tenant ID. If omitted, you sign in interactively to your home tenant.
+    Tenant to sign in to. Without it the sign-in picks your home tenant.
 
 .PARAMETER InactiveDays
-    Days without a sign-in before flagging an app as "Inactive". Default: 90.
+    Days without a sign-in before an app counts as inactive.
 
 .PARAMETER ExpiryWarningDays
-    Days before credential expiry to flag as "Expiring soon". Default: 30.
+    Days before a credential expires that it starts showing as expiring soon.
 
 .PARAMETER AutoInstallModules
-    If set, missing PowerShell modules are installed without prompting.
+    Install the missing Graph modules without asking first.
 
 .PARAMETER RequestWriteScopes
-    If set, requests Application.ReadWrite.All in addition to read-only scopes.
-    Required only if you want to run the cleanup commands directly from the same
-    session. Without this switch, the audit runs read-only — safer default.
-    To enable cleanup later, you can also re-connect manually:
-        Disconnect-MgGraph
-        Connect-MgGraph -Scopes 'Application.ReadWrite.All','Directory.Read.All'
+    Also ask for Application.ReadWrite.All at sign-in, so the cleanup commands in the report run in
+    this same session. Read-only is the default on purpose; this is the deliberate opt-in.
 
 .NOTES
-    Author : Simon Vedder
-    Site   : https://simonvedder.com
-    License: MIT
+    Requires PowerShell 7 or later and the modules Microsoft.Graph.Authentication and
+    Microsoft.Graph.Applications. Install them once with:
 
-    Required modules: Microsoft.Graph.Authentication, Microsoft.Graph.Applications
+        Install-Module Microsoft.Graph.Authentication, Microsoft.Graph.Applications -Scope CurrentUser
 
-    Required Graph permissions (delegated, read-only by default):
-        - Application.Read.All
-        - AuditLog.Read.All        (signInActivity needs Entra ID P1 or P2)
-        - Directory.Read.All
+    Or pass -AutoInstallModules and the script installs what is missing without asking.
+
+    Required permissions: the delegated Graph scopes Application.Read.All, Directory.Read.All and
+    AuditLog.Read.All, which you consent to at sign-in. Sign-in activity comes from AuditLog and
+    needs Entra ID P1 or P2; without it the report still lists every app and its credentials, and
+    the activity column says so instead of guessing.
+
+    Nothing here writes. The script reads Graph and writes one HTML file. Every cleanup command in
+    the report is text for you to copy - the script never runs one, and without
+    -RequestWriteScopes the session it opens cannot run one either.
+
+    MIT licensed. https://github.com/simon-vedder/app-lifecycle-analyzer
 
 .EXAMPLE
-    .\Get-AppLifecycleAnalysis.ps1
+    # Sign in to your home tenant, read, write the report next to you.
+    ./AppLifecycleAnalyzer.ps1
 
 .EXAMPLE
-    .\Get-AppLifecycleAnalysis.ps1 -InactiveDays 60 -RequestWriteScopes
+    # A stricter reading: inactive after 60 days, warn two weeks before a credential expires.
+    ./AppLifecycleAnalyzer.ps1 -InactiveDays 60 -ExpiryWarningDays 14
+
+.EXAMPLE
+    # A named tenant and a path you choose, for a report you hand to someone.
+    ./AppLifecycleAnalyzer.ps1 -TenantId 'contoso.onmicrosoft.com' -OutputPath './apps-q3.html'
+
+.EXAMPLE
+    # Ask for write scopes too, so the cleanup commands in the report run in this same session.
+    # Read-only is the default on purpose; this is the deliberate opt-in.
+    ./AppLifecycleAnalyzer.ps1 -RequestWriteScopes
 #>
 
 [CmdletBinding()]
@@ -316,6 +333,7 @@ Write-Host "  Total apps with sign-in info: $($spSignInByAppId.Count)" -Foregrou
 
 Write-Host "Retrieving federated identity credentials..." -ForegroundColor Cyan
 $fedCredsByApp = @{}
+$fedCredFailures = 0
 $progress = 0
 foreach ($app in $apps) {
   $progress++
@@ -327,9 +345,17 @@ foreach ($app in $apps) {
     $fc = Get-MgApplicationFederatedIdentityCredential -ApplicationId $app.Id -ErrorAction Stop
     if ($fc) { $fedCredsByApp[$app.Id] = $fc }
   }
-  catch { }
+  catch {
+    # One app that will not hand over its federated credentials must not stop the audit. Counting
+    # the failures matters though: skipping silently would show the app as having none, and on an
+    # audit a wrong answer is worse than a missing one.
+    $fedCredFailures++
+  }
 }
 Write-Progress -Activity "Federated credentials" -Completed
+if ($fedCredFailures) {
+  Write-Warning "  Could not read federated credentials for $fedCredFailures app(s). The federated column is incomplete for those."
+}
 
 # ---------------------------------------------------------------------------
 # Build records
