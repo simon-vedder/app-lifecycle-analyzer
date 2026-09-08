@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  powershell:
+    name: Analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache PowerShell modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/powershell/Modules
+          key: psmodules-${{ runner.os }}-psscriptanalyzer
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) {
+            Install-Module PSScriptAnalyzer -Force -Scope CurrentUser -SkipPublisherCheck
+          }
+
+      # The script reference is generated from the comment-based help. Checking it here is what
+      # stops the published parameter table from drifting away from the script people download.
+      - name: Script reference is current
+        shell: pwsh
+        run: ./tools/New-CommandReference.ps1 -Check
+
+      - name: Analyze
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          if ($results) {
+            $results | Format-Table -AutoSize Severity, ScriptName, Line, RuleName, Message
+            throw "PSScriptAnalyzer found $($results.Count) issue(s)."
+          }
+          Write-Host 'Clean.'

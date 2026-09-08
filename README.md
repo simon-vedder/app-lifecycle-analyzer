@@ -1,10 +1,13 @@
 # App Lifecycle Analyzer
 
+![Every app registration in your tenant with its credentials, their expiry and when it was last used, in one HTML report](docs/images/hero.png)
+
 ![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?logo=powershell&logoColor=white)
 ![Microsoft Entra ID](https://img.shields.io/badge/Microsoft-Entra_ID-0078D4?logo=microsoftazure&logoColor=white)
 ![Access: read-only](https://img.shields.io/badge/access-read--only-16a34a)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Last commit](https://img.shields.io/github/last-commit/simon-vedder/app-lifecycle-analyzer)
+![CI](https://github.com/simon-vedder/app-lifecycle-analyzer/actions/workflows/ci.yml/badge.svg)
 
 **Read-only lifecycle audit for Microsoft Entra ID app registrations — in one HTML report.**
 
@@ -37,6 +40,11 @@ write-scoped session yourself.
 The report opens in your browser: search, filter (has secret / cert / federated / none), and sort by
 credential exposure. Click an app for detail and copy the exact remediation command.
 
+Every parameter, with the permissions and the examples, is in the
+**[script reference](docs/commands/AppLifecycleAnalyzer.md)** — generated from the script's own
+comment-based help, so it cannot drift from what you downloaded. The same page is on the web at
+[simonvedder.com/tools/app-lifecycle-analyzer/commands/applifecycleanalyzer](https://simonvedder.com/tools/app-lifecycle-analyzer/commands/applifecycleanalyzer/).
+
 ## Permissions
 
 Read-only Microsoft Graph delegated scopes:
@@ -44,7 +52,9 @@ Read-only Microsoft Graph delegated scopes:
 
 ## Related
 
+- **[Tool page](https://simonvedder.com/tools/app-lifecycle-analyzer/)** — what it finds and why, with a sample report you can open.
 - **[Least Privilege Studio](https://github.com/simon-vedder/least-privilege-studio)** — Azure RBAC least-privilege tooling.
+- **[RiskyRolesAnalyzer](https://github.com/simon-vedder/risky-roles-analyzer)** — the same idea for privileged role assignments.
 - Write-up: [App Lifecycle Analysis for Entra ID](https://simonvedder.com/app-lifecycle-analysis-for-entra-id/)
 
 ---
