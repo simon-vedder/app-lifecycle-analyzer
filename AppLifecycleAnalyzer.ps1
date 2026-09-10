@@ -42,23 +42,21 @@
     this same session. Read-only is the default on purpose; this is the deliberate opt-in.
 
 .NOTES
-    Requires PowerShell 7 or later and the modules Microsoft.Graph.Authentication and
-    Microsoft.Graph.Applications. Install them once with:
+    Prerequisites: PowerShell 7 or later, and the modules Microsoft.Graph.Authentication and
+    Microsoft.Graph.Applications. Install them once with Install-Module
+    Microsoft.Graph.Authentication, Microsoft.Graph.Applications -Scope CurrentUser, or pass
+    -AutoInstallModules and the script installs what is missing without asking.
 
-        Install-Module Microsoft.Graph.Authentication, Microsoft.Graph.Applications -Scope CurrentUser
-
-    Or pass -AutoInstallModules and the script installs what is missing without asking.
-
-    Required permissions: the delegated Graph scopes Application.Read.All, Directory.Read.All and
+    RequiredPermissions: The delegated Graph scopes Application.Read.All, Directory.Read.All and
     AuditLog.Read.All, which you consent to at sign-in. Sign-in activity comes from AuditLog and
     needs Entra ID P1 or P2; without it the report still lists every app and its credentials, and
     the activity column says so instead of guessing.
 
-    Nothing here writes. The script reads Graph and writes one HTML file. Every cleanup command in
+    Writes: Nothing. The script reads Graph and writes one HTML file. Every cleanup command in
     the report is text for you to copy - the script never runs one, and without
     -RequestWriteScopes the session it opens cannot run one either.
 
-    MIT licensed. https://github.com/simon-vedder/app-lifecycle-analyzer
+    License: MIT. https://github.com/simon-vedder/app-lifecycle-analyzer
 
 .EXAMPLE
     # Sign in to your home tenant, read, write the report next to you.
